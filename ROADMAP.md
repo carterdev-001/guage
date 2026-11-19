@@ -1,6 +1,6 @@
 # ROADMAP: Gauge
 
-Last updated: 2026-11-19T11:05Z (task 7.10, Valid and Equal helpers for Thresholds and Flags)
+Last updated: 2026-11-19T11:05Z (task 7.17, test(report): exit mapping for accepted findings and fail-on warn)
 Roadmap version: 3
 
 This file is the single source of truth for remaining work. It is read before every task and updated after every change.
@@ -40,7 +40,7 @@ The repository is 100% ready when every task in Phases 0 to 6 is done and every 
 | 4 | Dogfood and release v0.1.0 | 2 | 9 | 22% |
 | 5 | v0.2 features | 3 | 11 | 27% |
 | 6 | Release v0.2.0 and community | 0 | 5 | 0% |
-| 7 (backlog) | Backlog | 1 | 5 | 20% |
+| 7 (backlog) | Backlog | 4 | 8 | 50% |
 | **Phases 0 to 6** | **Readiness total** | **56** | **79** | **70%** |
 | Gates | G1 to G10 | 3 | 10 | 30% |
 <!-- PROGRESS:END -->
@@ -227,6 +227,9 @@ Constraint on the two remaining experimental tasks: Gauge never builds or submit
 - [ ] **7.3** Alert integrations (probably never; JSON and CI cover it).
 - [ ] **7.4** Cross-check issued assets against `stellar.toml` currencies.
 - [x] **7.10** `Thresholds.Valid`, `Thresholds.Equal`, `Flags.Valid` and `Flags.Equal` in `internal/model`, so an observation can be range-checked and two observations compared. M. Deps: 2.1. Done when: `Thresholds.Valid` is false below 0 or above 255, both `Equal` methods compare every field, and `internal/model/account_thresholds_test.go` covers the boundaries, equality and all sixteen flag combinations. (done 2026-11-19: `Valid` bounds each threshold tier to 0 through 255, the range the schema fixes and the loader already enforces on declared values, and says nothing about tier order, which `sig-threshold-order` owns. `Flags.Valid` is true for all sixteen combinations because every bool is in range and no exclusion is documented; the test sweeps them so adding one is a visible change. Both `Equal` methods compare the whole struct, so a field added later is covered without editing them. No change to `internal/rules`, `internal/policy` or `internal/source`: the `compare` closures in `flagDrift` and `thrDrift` stay, since they carry a message and compare against the declared type.)
+- [x] **7.17** test(report): exit mapping for accepted findings and fail-on warn. S. Deps: none. Done when: internal/report/exit_test.go adds TestExitBoundaryMatrix covering an accepted High at SevInfo, SevWarn and SevHigh, an open Warn at SevWarn and SevHigh, and Info at all three; one accepted High plus one open Warn returns ExitPass at SevHigh and ExitFindings at SevWarn; a two-account report returns ExitFindings when any unaccepted finding meets the threshold; go test ./internal/report -run TestExitBoundaryMatrix -race -count=1 passes and the suite fails if !f.Accepted is removed. (done 2026-11-19: added internal/report/exit_test.go with TestExitBoundaryMatrix using model.NewFinding; removing the !f.Accepted guard fails the accepted-high cases.)
+- [x] **7.18** test(report): accepted findings counted once in the summary line. S. Deps: none. Done when: internal/report/accepted_summary_test.go renders one accepted High and one open Warn and asserts result: 2 findings (1 high, 1 warn, 0 info), 1 accepted; the per-account line reads findings: 2 (1 accepted) and only the High carries the accepted marker; a second case with two accepted findings of one severity asserts a total of 2, not 4, and an accepted count of 2; go test ./internal/report -run TestAcceptedFindingsCountedOnce -race -count=1 passes and fails if an accepted finding leaves its bucket or is counted twice. (done 2026-11-19: added internal/report/accepted_summary_test.go with TestAcceptedFindingsCountedOnce; accepted remains a subset of the severity buckets; removing the subset rule fails both cases.)
+- [x] **7.19** test(report): repeated rendering is byte-identical in text and JSON. S. Deps: none. Done when: internal/report/determinism_test.go renders one report twenty times in each format and asserts every run equals the first byte for byte; a copy shuffled with rand.New(rand.NewSource(1)) renders to the same bytes as ordered input; two findings share severity and account but differ by rule ID, and two keys are equal, proving sort stability; go test ./internal/report -run TestRenderingIsByteIdentical -race -count=1 passes and fails if the sort leaves prepare. (done 2026-11-19: added internal/report/determinism_test.go with TestRenderingIsByteIdentical; fixed seed 1; equal-key pair is two flag-drift findings on accountOne; removing sort fails the shuffle case.)
 
 ## 6. Dependency map (critical path)
 
